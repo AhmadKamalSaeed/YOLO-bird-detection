@@ -149,6 +149,7 @@ activemq-data/
 
 # Environments
 .env
+local.env
 .envrc
 .venv
 env/
@@ -216,3 +217,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Ultralytics local config (machine-specific paths, auto-regenerated)
+Ultralytics/settings.json
+
+# Ultralytics model weights (auto-downloaded)
+*.pt
+
+# Generated output artifacts
+*.mp4
+output*.csv

@@ -171,23 +171,20 @@ def check_unique_track_per_frame(df: pd.DataFrame) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Core validation — importable by main.py or run standalone
 # ---------------------------------------------------------------------------
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description='Validate a main.py output CSV.')
-    parser.add_argument('csv', help='Path to the output CSV to validate')
-    parser.add_argument(
-        '--video',
-        default=None,
-        help='Source video path; enables bbox bounds check against real frame size',
-    )
-    args = parser.parse_args()
+def run_validation(csv_path: str | Path, video_path: str | None = None) -> bool:
+    """
+    Validate a CSV produced by main.py.
 
-    csv_path = Path(args.csv)
+    Returns True if all checks pass, False otherwise.
+    Can be imported and called directly without going through argparse.
+    """
+    csv_path = Path(csv_path)
     if not csv_path.exists():
-        print(f'Error: {csv_path} not found.')
-        return 1
+        print(f'Validation error: {csv_path} not found.')
+        return False
 
     df = pd.read_csv(csv_path)
     print(f'\nValidating {csv_path.name}  ({len(df):,} rows)\n')
@@ -210,15 +207,15 @@ def main() -> int:
     results.append(check_bbox_parseable(df))
     results.append(check_bbox_positive_dimensions(df))
 
-    if args.video:
-        cap = cv2.VideoCapture(args.video)
+    if video_path:
+        cap = cv2.VideoCapture(str(video_path))
         frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         cap.release()
         if frame_w > 0 and frame_h > 0:
             results.append(check_bbox_within_frame(df, frame_w, frame_h))
         else:
-            print(f'  [!] Could not read frame dimensions from {args.video}, skipping bounds check.')
+            print(f'  [!] Could not read frame dimensions from {video_path}, skipping bounds check.')
     else:
         print('  [!] --video not provided, skipping bbox bounds check.')
 
@@ -226,7 +223,23 @@ def main() -> int:
     total = len(results)
     print(f'\n{passed}/{total} checks passed.')
 
-    return 0 if passed == total else 1
+    return passed == total
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description='Validate a main.py output CSV.')
+    parser.add_argument('csv', help='Path to the output CSV to validate')
+    parser.add_argument(
+        '--video',
+        default=None,
+        help='Source video path; enables bbox bounds check against real frame size',
+    )
+    args = parser.parse_args()
+    return 0 if run_validation(args.csv, args.video) else 1
 
 
 if __name__ == '__main__':

@@ -9,6 +9,8 @@ import cv2
 import pandas as pd
 from ultralytics import YOLO
 
+from validate import run_validation
+
 # Tuning knobs — adjust to trade speed for recall.
 DEVICE = 'mps'              # 'mps' (Apple Silicon GPU), 'cuda' (NVIDIA), 'cpu' (fallback)
 IMGSZ = 2560                # upscaled inference; small distant birds get more pixels to bite on
@@ -179,3 +181,6 @@ if not SHOW_PREVIEW:
 df = pd.DataFrame(results_data)
 df.to_csv(OUTPUT_CSV_PATH, index=False)
 print(f'Saved {OUTPUT_CSV_PATH} successfully!')
+
+print('\n--- Running validation ---')
+run_validation(OUTPUT_CSV_PATH, args.video)

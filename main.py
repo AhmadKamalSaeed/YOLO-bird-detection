@@ -50,6 +50,24 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get('OUTPUT_DIR', '.'),
         help='Directory for output video and CSV (default: current dir)',
     )
+    parser.add_argument(
+        '--show-preview',
+        action='store_true',
+        default=SHOW_PREVIEW,
+        help='Show live cv2 preview window while processing',
+    )
+    parser.add_argument(
+        '--save-video',
+        action='store_true',
+        default=SAVE_VIDEO,
+        help='Write annotated output_video_<id>.mp4 (forces every frame to be processed)',
+    )
+    parser.add_argument(
+        '--no-save-video',
+        action='store_false',
+        dest='save_video',
+        help='Skip writing the annotated video (faster, CSV only)',
+    )
     args = parser.parse_args()
     if not args.video:
         parser.error('Provide --video or set VIDEO_PATH')
@@ -73,14 +91,14 @@ cap = cv2.VideoCapture(args.video)
 fps = cap.get(cv2.CAP_PROP_FPS)
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-effective_stride = 1 if SAVE_VIDEO else FRAME_STRIDE
-if SAVE_VIDEO and FRAME_STRIDE != 1:
+effective_stride = 1 if args.save_video else FRAME_STRIDE
+if args.save_video and FRAME_STRIDE != 1:
     print(f'SAVE_VIDEO is on: processing every frame (FRAME_STRIDE={FRAME_STRIDE} ignored).')
 
 total_to_process = max(1, (total_frames + effective_stride - 1) // effective_stride)
 
 writer = None
-if SAVE_VIDEO:
+if args.save_video:
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -116,6 +134,7 @@ while cap.isOpened():
         iou=IOU,
         max_det=1000,
         augment=AUGMENT,
+        classes=[0,2,14,16],  # COCO class 0 = person, 2 = car, 14 = bird, 16 = cat/dog
         tracker='botsort.yaml',
         verbose=False,
     )
@@ -141,13 +160,13 @@ while cap.isOpened():
                 "timestamp": round(timestamp, 3)
             })
 
-    if SAVE_VIDEO or SHOW_PREVIEW:
+    if args.save_video or args.show_preview:
         annotated_frame = results[0].plot()
 
-    if SAVE_VIDEO:
+    if args.save_video:
         writer.write(annotated_frame)
 
-    if SHOW_PREVIEW:
+    if args.show_preview:
         cv2.imshow('YOLO Tracking', annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -173,7 +192,7 @@ if writer is not None:
     writer.release()
     print(f'Saved annotated video to {OUTPUT_VIDEO_PATH}')
 cv2.destroyAllWindows()
-if not SHOW_PREVIEW:
+if not args.show_preview:
     sys.stdout.write('\n')
     sys.stdout.flush()
 
